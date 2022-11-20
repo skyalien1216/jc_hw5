@@ -2,6 +2,7 @@ package dao;
 
 import entity.Organization;
 import org.flywaydb.core.Flyway;
+import org.java_courses.CREDS;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -17,30 +18,18 @@ class OrganizationDAOTest {
 
     @BeforeAll
     static void prepare(){
-        var dbName = "postgres";
-        var user = "postgres";
-        var password = "skyalien";
-
         final Flyway flyway = Flyway
                 .configure().cleanDisabled(false)
-                .dataSource("jdbc:postgresql://localhost/" + dbName, user, password)
+                .dataSource("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)
                 .locations("testdb")
                 .load();
         flyway.clean();
         flyway.migrate();
         System.out.println("Migrations applied successfully");
 
-        try {
-            connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + dbName, user, password);
-            dao = new OrganizationDAO(connection, "jc_hw5_test");
-        } catch (SQLException e) {
-            System.out.println("Test preparation failed!!");
-            System.out.println(e.getMessage());
-            throw new RuntimeException(e);
-        }
+        dao = new OrganizationDAO("jc_hw5_test");
     }
 
-    private static Connection connection;
     private static OrganizationDAO dao;
 
     @Test
@@ -50,7 +39,7 @@ class OrganizationDAOTest {
 
     @Test
     void all() {
-        assertEquals(11, dao.all().size());
+        assertEquals("[Organization{name='org1', bankAccount='null', inn=1}, Organization{name='org2', bankAccount='null', inn=2}, Organization{name='org3', bankAccount='null', inn=3}, Organization{name='org4', bankAccount='null', inn=4}, Organization{name='org5', bankAccount='null', inn=5}, Organization{name='org6', bankAccount='null', inn=6}, Organization{name='org7', bankAccount='null', inn=7}, Organization{name='org8', bankAccount='null', inn=8}, Organization{name='org9', bankAccount='null', inn=9}, Organization{name='org10', bankAccount='null', inn=10}, Organization{name='org11', bankAccount='null', inn=11}]", dao.all().toString());
     }
 
 
@@ -64,13 +53,12 @@ class OrganizationDAOTest {
 
     @Test
     void update() {
-        var o = dao.get(1);
-        var name = o.getName();
-        o.setName("test");
+        var o = new Organization(101, "test", null);
+        dao.save(o);
+        o.setName("test11");
         dao.update(o);
-        assertEquals("Organization{name='test', bankAccount='null', inn=1}",dao.get(1).toString());
-        o.setName(name);
-        dao.update(o);
+        assertEquals("Organization{name='test11', bankAccount='null', inn=101}",dao.get(101).toString());
+        dao.delete(o);
     }
 
     @Test
@@ -84,7 +72,7 @@ class OrganizationDAOTest {
 
    @AfterAll
    public static void dropDB(){
-        try {
+       try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)){
             connection.createStatement().executeUpdate("drop table jc_hw5_test.organization cascade;" +
                     "drop table jc_hw5_test.product cascade;" +
                     "drop table jc_hw5_test.invoice cascade;" +

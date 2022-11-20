@@ -20,30 +20,18 @@ class SQLTasksTest {
 
     @BeforeAll
     static void prepare(){
-        var dbName = "postgres";
-        var user = "postgres";
-        var password = "skyalien";
-
         final Flyway flyway = Flyway
                 .configure().cleanDisabled(false)
-                .dataSource("jdbc:postgresql://localhost/" + dbName, user, password)
+                .dataSource("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)
                 .locations("testdb")
                 .load();
         flyway.clean();
         flyway.migrate();
         System.out.println("Migrations applied successfully");
 
-        try {
-            connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + dbName, user, password);
-            sqlTasks = new SQLTasks(connection, "jc_hw5_test");
-        } catch (SQLException e) {
-            System.out.println("Test preparation failed!!");
-            System.out.println(e.getMessage());
-            throw new RuntimeException(e);
-        }
+        sqlTasks = new SQLTasks("jc_hw5_test");
     }
 
-    private static Connection connection;
     private static SQLTasks sqlTasks;
 
     @Test
@@ -81,7 +69,7 @@ class SQLTasksTest {
 
     @AfterAll
     public static void dropDB(){
-        try {
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)){
             connection.createStatement().executeUpdate("drop table jc_hw5_test.organization cascade;" +
                     "drop table jc_hw5_test.product cascade;" +
                     "drop table jc_hw5_test.invoice cascade;" +

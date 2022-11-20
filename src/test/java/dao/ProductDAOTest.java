@@ -4,6 +4,7 @@ import entity.Invoice;
 import entity.Organization;
 import entity.Product;
 import org.flywaydb.core.Flyway;
+import org.java_courses.CREDS;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -20,30 +21,17 @@ class ProductDAOTest {
 
     @BeforeAll
     static void prepare(){
-        var dbName = "postgres";
-        var user = "postgres";
-        var password = "skyalien";
-
         final Flyway flyway = Flyway
                 .configure().cleanDisabled(false)
-                .dataSource("jdbc:postgresql://localhost/" + dbName, user, password)
+                .dataSource("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)
                 .locations("testdb")
                 .load();
         flyway.clean();
         flyway.migrate();
         System.out.println("Migrations applied successfully");
 
-        try {
-            connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + dbName, user, password);
-            dao = new ProductDAO(connection, "jc_hw5_test");
-        } catch (SQLException e) {
-            System.out.println("Test preparation failed!!");
-            System.out.println(e.getMessage());
-            throw new RuntimeException(e);
-        }
+        dao = new ProductDAO("jc_hw5_test");
     }
-
-    private static Connection connection;
     private static ProductDAO dao;
 
     @Test
@@ -53,7 +41,7 @@ class ProductDAOTest {
 
     @Test
     void all() {
-        assertEquals(3, dao.all().size());
+        assertEquals("[Product{name='table', code=1}, Product{name='chair', code=2}, Product{name='spoon', code=3}]", dao.all().toString());
     }
 
    @Test
@@ -66,13 +54,12 @@ class ProductDAOTest {
 
     @Test
     void update() {
-        var p = dao.get(1);
-        var name = p.getName();
-        p.setName("test");
+        var p = new Product(101, "test");
+        dao.save(p);
+        p.setName("test11");
         dao.update(p);
-        assertEquals("Product{name='test', code=1}",dao.get(1).toString());
-        p.setName(name);
-        dao.update(p);
+        assertEquals("Product{name='test11', code=101}",dao.get(101).toString());
+        dao.delete(p);
     }
 
     @Test
@@ -86,7 +73,7 @@ class ProductDAOTest {
 
    @AfterAll
    public static void dropDB(){
-        try {
+       try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)){
             connection.createStatement().executeUpdate("drop table jc_hw5_test.organization cascade;" +
                     "drop table jc_hw5_test.product cascade;" +
                     "drop table jc_hw5_test.invoice cascade;" +

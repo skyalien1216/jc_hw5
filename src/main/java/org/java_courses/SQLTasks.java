@@ -5,21 +5,16 @@ import entity.Product;
 import javafx.util.Pair;
 import org.jetbrains.annotations.NotNull;
 
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public final class SQLTasks {
-    private final @NotNull Connection connection;
     private final String schema;
 
-    public SQLTasks(@NotNull Connection connection, String schema) {
-        this.connection = connection;
+    public SQLTasks(String schema) {
         this.schema = schema;
     }
 
@@ -31,18 +26,20 @@ public final class SQLTasks {
                 "join "+ schema +".invoice_positions ip on i.id = ip.invoice_id group by organization_id) ii " +
                 "on ii.inn = o.inn order by ii.amount desc limit 10;";
         final List<Pair<Organization, Integer>> result = new ArrayList<>();
-        try (var statement = connection.createStatement()) {
-            try (var resultSet = statement.executeQuery(sql)) {
-                while (resultSet.next()) {
-                    var amount = resultSet.getInt("amount");
-                    var inn = resultSet.getInt("inn");
-                    var name = resultSet.getString("name");
-                    var bAcc = resultSet.getString("bank_account");
-                    result.add(new Pair<>(new Organization(inn,name,bAcc), amount));
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)) {
+            try (var statement = connection.createStatement()) {
+                try (var resultSet = statement.executeQuery(sql)) {
+                    while (resultSet.next()) {
+                        var amount = resultSet.getInt("amount");
+                        var inn = resultSet.getInt("inn");
+                        var name = resultSet.getString("name");
+                        var bAcc = resultSet.getString("bank_account");
+                        result.add(new Pair<>(new Organization(inn, name, bAcc), amount));
+                    }
+                    return result;
                 }
-                return result;
             }
-        } catch (SQLException e) {
+        }catch (SQLException e) {
             System.out.println(e.getMessage());
             throw new RuntimeException("SQLTASKS::1");
         }
@@ -71,17 +68,19 @@ public final class SQLTasks {
             }
         }
         sql.append(";");
-        try (var statement = connection.createStatement()) {
-            try (var resultSet = statement.executeQuery(sql.toString())) {
-                while (resultSet.next()) {
-                    var inn = resultSet.getInt("inn");
-                    var name = resultSet.getString("name");
-                    var bAcc = resultSet.getString("bank_account");
-                    result.add(new Organization(inn,name,bAcc));
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)) {
+            try (var statement = connection.createStatement()) {
+                try (var resultSet = statement.executeQuery(sql.toString())) {
+                    while (resultSet.next()) {
+                        var inn = resultSet.getInt("inn");
+                        var name = resultSet.getString("name");
+                        var bAcc = resultSet.getString("bank_account");
+                        result.add(new Organization(inn, name, bAcc));
+                    }
+                    return result;
                 }
-                return result;
             }
-        } catch (SQLException e) {
+        }catch (SQLException e) {
             System.out.println(e.getMessage());
             throw new RuntimeException("SQLTASKS::2");
         }
@@ -94,21 +93,23 @@ public final class SQLTasks {
                 "where date > ? and date < ? group by product_id, date, name ;";
 
         final List<Task3Data> result = new ArrayList<>();
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setDate(1, startDate);
-            preparedStatement.setDate(2, endDate);
-            try (var resultSet = preparedStatement.executeQuery()){
-                while (resultSet.next()) {
-                    var prId = resultSet.getInt("product_id");
-                    var date = resultSet.getDate("date");
-                    var sum = resultSet.getInt("sum");
-                    var amount = resultSet.getInt("amount");
-                    var name = resultSet.getString("name");
-                    result.add(new Task3Data(new Product(prId, name), date, sum, amount));
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                preparedStatement.setDate(1, startDate);
+                preparedStatement.setDate(2, endDate);
+                try (var resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        var prId = resultSet.getInt("product_id");
+                        var date = resultSet.getDate("date");
+                        var sum = resultSet.getInt("sum");
+                        var amount = resultSet.getInt("amount");
+                        var name = resultSet.getString("name");
+                        result.add(new Task3Data(new Product(prId, name), date, sum, amount));
+                    }
+                    return new Pair<>(result, getFinalResForPeriod(startDate, endDate));
                 }
-                return new Pair<>(result, getFinalResForPeriod(startDate, endDate));
             }
-        } catch (SQLException e) {
+        }catch (SQLException e) {
             System.out.println(e.getMessage());
             throw new RuntimeException("SQLTASKS::3");
         }
@@ -121,18 +122,20 @@ public final class SQLTasks {
                 "where date > ? and date < ? group by product_id, name ;";
 
         final var result = new ArrayList<Task3Data>();
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setDate(1, startDate);
-            preparedStatement.setDate(2, endDate);
-            try (var resultSet = preparedStatement.executeQuery()){
-                while (resultSet.next()) {
-                    var prId = resultSet.getInt("product_id");
-                    var sum = resultSet.getInt("sum");
-                    var amount = resultSet.getInt("amount");
-                    var name = resultSet.getString("name");
-                    result.add(new Task3Data(new Product(prId, name), null, sum, amount));
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                preparedStatement.setDate(1, startDate);
+                preparedStatement.setDate(2, endDate);
+                try (var resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        var prId = resultSet.getInt("product_id");
+                        var sum = resultSet.getInt("sum");
+                        var amount = resultSet.getInt("amount");
+                        var name = resultSet.getString("name");
+                        result.add(new Task3Data(new Product(prId, name), null, sum, amount));
+                    }
+                    return result;
                 }
-                return result;
             }
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -147,19 +150,21 @@ public final class SQLTasks {
                 " where date > ? and date < ? group by product_id, name;";
 
         final var result = new ArrayList<Pair<Product,Double>>();
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setDate(1, startDate);
-            preparedStatement.setDate(2, endDate);
-            try (var resultSet = preparedStatement.executeQuery()){
-                while (resultSet.next()) {
-                    var prId = resultSet.getInt("product_id");
-                    var avg = resultSet.getDouble("avg");
-                    var name = resultSet.getString("name");
-                    result.add(new Pair<Product, Double>(new Product(prId,name), avg));
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                preparedStatement.setDate(1, startDate);
+                preparedStatement.setDate(2, endDate);
+                try (var resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        var prId = resultSet.getInt("product_id");
+                        var avg = resultSet.getDouble("avg");
+                        var name = resultSet.getString("name");
+                        result.add(new Pair<Product, Double>(new Product(prId, name), avg));
+                    }
+                    return result;
                 }
-                return result;
             }
-        } catch (SQLException e) {
+        }catch (SQLException e) {
             System.out.println(e.getMessage());
             throw new RuntimeException("SQLTASKS::4");
         }
@@ -174,34 +179,36 @@ public final class SQLTasks {
                 " on op.organization_id = o.inn order by inn;";
 
         final var result = new HashMap<Organization, List<Product>>();
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setDate(1, startDate);
-            preparedStatement.setDate(2, endDate);
-            try (var resultSet = preparedStatement.executeQuery()){
-                var seen = new ArrayList<Integer>();
-                while (resultSet.next()) {
-                    var code = resultSet.getInt("code");
-                    var inn = resultSet.getInt("inn");
-                    var orgName = resultSet.getString("org_name");
-                    var pName = resultSet.getString("pr_name");
-                    var bAcc = resultSet.getString("bank_account");
-                    var product = new Product(code, pName);
-                    var org = new Organization(inn, orgName,bAcc);
-                    List<Product> list;
-                    if (seen.contains(inn)){
-                        var key = result.keySet().stream().filter(x -> x.getInn() == inn).findFirst().orElse(null);
-                        list = result.get(key);
-                        result.remove(key);
-                    } else {
-                        seen.add(inn);
-                        list = new ArrayList<Product>();
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                preparedStatement.setDate(1, startDate);
+                preparedStatement.setDate(2, endDate);
+                try (var resultSet = preparedStatement.executeQuery()) {
+                    var seen = new ArrayList<Integer>();
+                    while (resultSet.next()) {
+                        var code = resultSet.getInt("code");
+                        var inn = resultSet.getInt("inn");
+                        var orgName = resultSet.getString("org_name");
+                        var pName = resultSet.getString("pr_name");
+                        var bAcc = resultSet.getString("bank_account");
+                        var product = new Product(code, pName);
+                        var org = new Organization(inn, orgName, bAcc);
+                        List<Product> list;
+                        if (seen.contains(inn)) {
+                            var key = result.keySet().stream().filter(x -> x.getInn() == inn).findFirst().orElse(null);
+                            list = result.get(key);
+                            result.remove(key);
+                        } else {
+                            seen.add(inn);
+                            list = new ArrayList<Product>();
+                        }
+                        list.add(product);
+                        result.put(org, list);
                     }
-                    list.add(product);
-                    result.put(org, list);
+                    return result;
                 }
-                return result;
             }
-        } catch (SQLException e) {
+        }catch (SQLException e) {
             System.out.println(e.getMessage());
             throw new RuntimeException("SQLTASKS::5");
         }

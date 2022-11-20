@@ -10,22 +10,18 @@ import java.sql.SQLException;
 
 public class Main {
 
-    public static void main(@NotNull String[] args) {
-        var dbName = args[0];
-        var user = args[1];
-        var password = args[2];
-
+    public static void main(String[] args) {
         final Flyway flyway = Flyway
                 .configure().cleanDisabled(false)
-                .dataSource("jdbc:postgresql://localhost/" + dbName, user, password)
+                .dataSource("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)
                 .locations("db")
                 .load();
         flyway.clean();
         flyway.migrate();
         System.out.println("Migrations applied successfully");
 
-        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + dbName, user, password)) {
-            var dao = new InvoiceDAO(connection, "jc_hw5_kha");
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost/" + CREDS.dbName, CREDS.user, CREDS.password)) {
+            var dao = new InvoiceDAO("jc_hw5_kha");
             dao.all().forEach(System.out::println);
             destroyDB(connection);
         } catch (SQLException e) {
